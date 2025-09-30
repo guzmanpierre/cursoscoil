@@ -1,0 +1,1199 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>COIL IPN - Aprendizaje Internacional Colaborativo en Línea</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- React -->
+    <script src="https://unpkg.com/react@17/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Firebase SDK -->
+    <script type="module">
+        // Estas importaciones son necesarias para conectar con Firebase.
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getFirestore, collection, getDocs, query, where, addDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        
+        // Hacemos que las funciones de Firebase estén disponibles globalmente para que React pueda usarlas.
+        window.firebase = {
+            initializeApp,
+            getFirestore,
+            collection,
+            getDocs,
+            query,
+            where,
+            addDoc,
+            getAuth,
+            signInAnonymously,
+            signInWithCustomToken,
+        };
+    </script>
+    
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            scroll-behavior: smooth;
+        }
+        .hero-gradient {
+            background: linear-gradient(90deg, rgba(0, 63, 114, 0.95) 0%, rgba(106, 27, 87, 0.95) 100%);
+        }
+        .spinner {
+            border-top-color: #6a1b57;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        @keyframes fade-in-up {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .animate-fade-in-up {
+            animation: fade-in-up 0.5s ease-out forwards;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800">
+
+    <div id="app"></div>
+    
+    <script type="text/babel">
+        // Extraemos los hooks 'useState' y 'useEffect' de React para poder usarlos.
+        const { useState, useEffect, useRef } = React;
+
+        // Objeto 'content' que almacena todos los textos de la página en español ('es') e inglés ('en').
+        // Esto facilita la funcionalidad bilingüe del sitio.
+        const content = {
+            es: {
+                nav: {
+                    about: '¿Qué es COIL?',
+                    students: 'Estudiantes',
+                    faculty: 'Docentes',
+                    publications: 'Publicaciones',
+                    resources: 'Recursos',
+                    event: 'Jornada 2025',
+                    contact: 'Contacto',
+                    home: 'Inicio',
+                },
+                hero: {
+                    title: 'Conecta tu aprendizaje con el mundo',
+                    subtitle: 'Participa en el programa COIL del IPN y vive una experiencia educativa global, intercultural y colaborativa desde tu aula.',
+                    ctaStudent: 'Explorar Cursos',
+                    ctaFaculty: 'Diseñar un COIL',
+                    studentPromptTitle: '¿Eres Alumno?',
+                    studentPromptSubtitle: 'Busca cursos y colabora con compañeros de todo el mundo.',
+                    facultyPromptTitle: '¿Eres Docente?',
+                    facultyPromptSubtitle: 'Internacionaliza tu asignatura y crea redes académicas.',
+                    loginPrompt: '¿Ya participas en un COIL?',
+                    loginLink: 'Accede aquí',
+                },
+                about: {
+                    title: '¿Qué es COIL?',
+                    description: 'Imagina tu salón de clases conectado con una universidad en otro país. Eso es COIL (Aprendizaje Internacional Colaborativo en Línea). Es una metodología donde, como parte de tu materia regular, trabajas en equipo con estudiantes y docentes de otras culturas en proyectos reales. No es un curso extra, ¡es tu mismo curso, pero con una perspectiva global! Cada módulo combina los temas de tu carrera con el desarrollo de habilidades interculturales, preparándote para un mundo conectado.',
+                    benefits: [
+                        { svg: <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>, title: 'Perspectiva Global', text: 'Analiza temas desde diferentes puntos de vista culturales y académicos.' },
+                        { svg: <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><polyline points="17 11 19 13 23 9"></polyline></svg>, title: 'Colaboración Intercultural', text: 'Desarrolla habilidades de trabajo en equipo con compañeros de otros países.' },
+                        { svg: <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 16V7a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v9m16 0H4m16 0 1.28 2.55A1 1 0 0 1 20.28 20H3.72a1 1 0 0 1-.9-1.45L4 16"></path></svg>, title: 'Competencias Digitales', text: 'Utiliza herramientas tecnológicas para la colaboración y comunicación a distancia.' },
+                        { svg: <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m5 8 6 6"></path><path d="m4 14 6-6 2-3"></path><path d="M2 5h12"></path><path d="M7 2h1"></path><path d="m22 22-5-10-5 10"></path><path d="M14 18h6"></path></svg>, title: 'Práctica de Idiomas', text: 'Mejora tus habilidades en un segundo idioma en un contexto real.' },
+                    ]
+                },
+                students: {
+                    title: 'Para Estudiantes',
+                    subtitle: 'Expande tus horizontes y enriquece tu formación profesional.',
+                    description: 'Al participar en un módulo COIL, no solo cumples con tus créditos académicos, sino que también desarrollas competencias clave para el mercado laboral global. ¡Prepárate para un desafío único!',
+                    cta: 'Ver todos los cursos'
+                },
+                faculty: {
+                    title: 'Para Docentes y Universidades',
+                    subtitle: 'Internacionaliza tu currículo y crea redes académicas globales.',
+                    description: 'Diseña un módulo COIL en colaboración con un colega de una universidad extranjera. Enriquece tu asignatura, ofrece a tus estudiantes una experiencia única y publica los resultados de tu innovación docente.',
+                    cta: 'Conviértete en socio',
+                    gemini_title: '✨ Asistente de Socios COIL',
+                    gemini_prompt: 'Introduce el tema de tu curso (ej. "Inteligencia Artificial", "Arquitectura Sostenible"):',
+                    gemini_button: 'Buscar socios potenciales',
+                    gemini_loading: 'Buscando socios...',
+                    gemini_error: 'Ha ocurrido un error. Por favor, inténtalo de nuevo.',
+                    gemini_results_title: 'Sugerencias de Socios',
+                    gemini_disclaimer: 'Estas sugerencias son generadas por IA y deben ser verificadas.',
+                },
+                footer: {
+                    aboutTitle: 'COIL IPN',
+                    aboutText: 'Una iniciativa del Instituto Politécnico Nacional para la internacionalización de la educación superior.',
+                    linksTitle: 'Navegación',
+                    contactTitle: 'Contacto',
+                    contactEmail: 'pjguzmanp@ipn.mx',
+                    contactPhone: '+52 55 5729 6000 ext. 57425',
+                    copyright: 'Instituto Politécnico Nacional. Algunos derechos reservados.'
+                },
+                coursesView: {
+                    title: 'Cursos COIL Disponibles',
+                    button: 'Ver Detalles y Registrarse'
+                },
+                formView: {
+                    backButton: 'Volver a Cursos',
+                    title: 'Formato de Inscripción',
+                    courseLabel: 'Curso',
+                    personalDataLegend: 'Datos Personales',
+                    firstNameLabel: '* Nombre(s)',
+                    lastName1Label: '* Apellido Paterno',
+                    lastName2Label: '* Apellido Materno',
+                    genderLabel: '* Género',
+                    genderMale: 'Masculino',
+                    genderFemale: 'Femenino',
+                    genderOther: 'Otro',
+                    genderPreferNot: 'Prefiero no decir',
+                    ageLabel: '* Edad',
+                    contactLegend: 'Información de Contacto y Residencia',
+                    cityLabel: '* Ciudad',
+                    stateLabel: '* Estado',
+                    countryLabel: '* País',
+                    zipLabel: '* Código Postal',
+                    emailLabel: '* Correo Electrónico',
+                    academicLegend: 'Información Académica',
+                    studiesLabel: '* Último grado de estudios',
+                    studiesHighSchool: 'Preparatoria',
+                    studiesBachelor: 'Licenciatura',
+                    studiesMaster: 'Maestría',
+                    studiesDoctorate: 'Doctorado',
+                    studiesOther: 'Otro',
+                    institutionLabel: '* Institución de donde se graduó',
+                    isIpnMemberLabel: '* ¿Eres parte de la comunidad IPN?',
+                    yes: 'Sí',
+                    no: 'No',
+                    ipnUnitLabel: '* Escuela, Centro o Unidad del IPN',
+                    ipnUnitPlaceholder: 'Ej. ESCOM, UPIITA, CICS',
+                    ipnIdLabel: '* Boleta / No. de empleado',
+                    submitButton: 'Enviar Inscripción',
+                    submitting: 'Enviando...',
+                    submitSuccess: '¡Inscripción enviada con éxito!',
+                    submitError: 'Error al enviar. Inténtalo de nuevo.'
+                },
+                facultyInfoView: {
+                    title: 'Diseña un Módulo COIL',
+                    subtitle: 'Internacionaliza tu aula y conecta a tus estudiantes con el mundo.',
+                    processTitle: '¿Cómo Funciona el Proceso?',
+                    step1Title: '1. Propuesta',
+                    step1Text: 'Registra los detalles de tu curso y tus ideas iniciales.',
+                    step2Title: '2. Búsqueda de Socio',
+                    step2Text: 'Te ayudamos a conectar con un docente afín en el extranjero.',
+                    step3Title: '3. Co-diseño',
+                    step3Text: 'Desarrollan juntos el sílabo y las actividades colaborativas.',
+                    step4Title: '4. Implementación',
+                    step4Text: 'Lanza tu módulo COIL con nuestro soporte técnico y pedagógico.',
+                    benefitsTitle: 'Lineamientos y Beneficios',
+                    benefit1: 'Recibirás apoyo institucional para la vinculación y formalización de la colaboración.',
+                    benefit2: 'Acceso a capacitación y recursos pedagógicos sobre la metodología COIL.',
+                    benefit3: 'Oportunidad de publicar y presentar los resultados de tu innovación docente.',
+                    benefit4: 'Enriquecimiento de tu asignatura y desarrollo de competencias globales para tus estudiantes.',
+                    benefit5: 'Flexibilidad para adaptar el módulo COIL a la duración y objetivos de tu curso (típicamente de 4 a 8 semanas).',
+                    cta: 'Registrar Propuesta de Curso COIL'
+                },
+                facultyFormView: {
+                    backButton: 'Volver a Información',
+                    title: 'Registro de Propuesta COIL para Docentes',
+                    teacherInfoLegend: 'Información del Docente',
+                    fullNameLabel: '* Nombre Completo',
+                    emailLabel: '* Correo Electrónico Institucional',
+                    ipnUnitLabel: '* Escuela, Centro o Unidad del IPN',
+                    ipnUnitPlaceholder: 'Ej. ESCOM, UPIITA, CICS',
+                    proposalInfoLegend: 'Información de la Propuesta COIL',
+                    courseNameLabel: '* Nombre de la Asignatura IPN',
+                    semesterLabel: '* Semestre en que se imparte',
+                    semesterPlaceholder: 'Ej. 2025-2',
+                    courseDescriptionLabel: '* Breve Descripción de la Asignatura',
+                    coilIdeasLabel: 'Ideas para el componente COIL (temas, proyectos, países de interés)',
+                    coilIdeasPlaceholder: 'Ej. Un proyecto comparativo sobre políticas de ciberseguridad con una universidad en Corea del Sur.',
+                    submitButton: 'Enviar Propuesta',
+                    submitting: 'Enviando...',
+                    submitSuccess: '¡Propuesta enviada con éxito!',
+                    submitError: 'Error al enviar. Inténtalo de nuevo.'
+                },
+                publicationsView: {
+                    title: 'Publicaciones COIL IPN',
+                    intro: 'Explora una selección de artículos, investigaciones y ponencias que documentan el impacto y las mejores prácticas de la metodología COIL en nuestra comunidad.',
+                    publications: [
+                        { title: 'El Impacto de la Colaboración Intercultural en Competencias de Ingeniería.', authors: 'García, M. y Schmidt, H.', journal: 'Revista de Innovación Educativa, Vol. 12, No. 3, 2024.', url: '#' },
+                        { title: 'Estrategias de Evaluación en Entornos de Aprendizaje COIL.', authors: 'Pérez, L. y Watanabe, K.', journal: 'Actas del Congreso Internacional de Educación a Distancia, 2023.', url: '#' },
+                        { title: 'Desarrollo de Software en Equipos Globales: Un Caso de Estudio COIL.', authors: 'Rodríguez, A., Chen, L. y Smith, J.', journal: 'Journal of Computer Science Education, 2024.', url: '#' }
+                    ]
+                },
+                eventView: {
+                    title: 'Primera Jornada COIL IPN 2025',
+                    subtitle: 'Conectando Aulas, Transformando el Futuro',
+                    date: '28 de Noviembre, 2025 | Auditorio "Jaime Torres Bodet", Zacatenco',
+                    description: 'Te invitamos a la Primera Jornada COIL del IPN, un evento diseñado para celebrar y compartir las experiencias de internacionalización en casa. Descubre proyectos innovadores, conecta con colegas de todo el mundo y aprende cómo puedes ser parte de esta revolución educativa.',
+                    objectiveTitle: 'Objetivos de la Jornada',
+                    objectives: [
+                        'Presentar los resultados de los proyectos COIL implementados en el último año.',
+                        'Facilitar el networking entre docentes del IPN y de universidades socias.',
+                        'Ofrecer talleres prácticos sobre el diseño e implementación de módulos COIL.',
+                        'Inspirar a más docentes y estudiantes a participar en futuras colaboraciones.'
+                    ],
+                    programTitle: 'Programa del Evento',
+                    programItems: [
+                        { time: '09:00 - 09:30', activity: 'Registro y Café de Bienvenida' },
+                        { time: '09:30 - 10:00', activity: 'Inauguración y Palabras de Bienvenida' },
+                        { time: '10:00 - 11:30', activity: 'Panel: "El Impacto de COIL en la Formación Profesional"' },
+                        { time: '11:30 - 13:00', activity: 'Presentación de Proyectos Estudiantiles COIL' },
+                        { time: '13:00 - 14:30', activity: 'Comida y Networking' },
+                        { time: '14:30 - 16:00', activity: 'Talleres Simultáneos (Diseño de sílabo, Herramientas digitales)' },
+                        { time: '16:00 - 16:30', activity: 'Clausura y Entrega de Reconocimientos' },
+                    ],
+                    cta: 'Regístrate Ahora'
+                },
+                resourcesView: {
+                    title: 'Recursos COIL IPN',
+                    intro: 'Encuentra guías, plantillas y herramientas para planificar, diseñar e implementar exitosamente tus módulos COIL.',
+                    backButton: 'Volver a Recursos',
+                    loading: 'Cargando recursos...',
+                    categories: {
+                        'Artículos': { title: 'Artículos', image: 'https://images.unsplash.com/photo-1544947950-fa07a98ba85e?q=80&w=800&auto=format&fit=crop' },
+                        'Libros': { title: 'Libros', image: 'https://images.unsplash.com/photo-1524995767962-b1f4b8a3a3b1?q=80&w=800&auto=format&fit=crop' },
+                        'Infografías': { title: 'Infografías', image: 'https://images.unsplash.com/photo-1525268771113-32d9e9021a97?q=80&w=800&auto=format&fit=crop' },
+                        'Tutoriales': { title: 'Tutoriales', image: 'https://images.unsplash.com/photo-1578916171728-46686eac8d58?q=80&w=800&auto=format&fit=crop' },
+                        'Cuaderno de Trabajo': { title: 'Cuaderno de Trabajo', image: 'https://images.unsplash.com/photo-1517048676732-d65bc937f952?q=80&w=800&auto=format&fit=crop' },
+                        'Varios': { title: 'Varios', image: 'https://images.unsplash.com/photo-1495020689067-958852a7765e?q=80&w=800&auto=format&fit=crop' },
+                    }
+                }
+            },
+            en: {
+                nav: {
+                    about: 'What is COIL?',
+                    students: 'Students',
+                    faculty: 'Faculty',
+                    publications: 'Publications',
+                    resources: 'Resources',
+                    event: 'Symposium 2025',
+                    contact: 'Contact',
+                    home: 'Home',
+                },
+                hero: {
+                    title: 'Connect Your Learning with the World',
+                    subtitle: 'Join the IPN COIL program and live a global, intercultural, and collaborative educational experience from your classroom.',
+                    ctaStudent: 'Explore Courses',
+                    ctaFaculty: 'Design a COIL',
+                    studentPromptTitle: 'Are you a Student?',
+                    studentPromptSubtitle: 'Find courses and collaborate with peers from around the world.',
+                    facultyPromptTitle: 'Are you a Faculty Member?',
+                    facultyPromptSubtitle: 'Internationalize your course and create academic networks.',
+                    loginPrompt: 'Already in a COIL?',
+                    loginLink: 'Access here',
+                },
+                about: {
+                    title: 'What is COIL?',
+                    description: "Imagine your classroom connected to a university in another country. That's COIL (Collaborative Online International Learning). It's a methodology where, as part of your regular course, you team up with students and faculty from other cultures on real projects. It’s not an extra course—it’s your same course, but with a global perspective! Each module combines topics from your degree with the development of intercultural skills, preparing you for a connected world.",
+                    benefits: [
+                        { svg: <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>, title: 'Global Perspective', text: 'Analyze topics from different cultural and academic points of view.' },
+                        { svg: <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><polyline points="17 11 19 13 23 9"></polyline></svg>, title: 'Intercultural Collaboration', text: 'Develop teamwork skills with peers from other countries.' },
+                        { svg: <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 16V7a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v9m16 0H4m16 0 1.28 2.55A1 1 0 0 1 20.28 20H3.72a1 1 0 0 1-.9-1.45L4 16"></path></svg>, title: 'Digital Competencies', text: 'Use technological tools for remote collaboration and communication.' },
+                        { svg: <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m5 8 6 6"></path><path d="m4 14 6-6 2-3"></path><path d="M2 5h12"></path><path d="M7 2h1"></path><path d="m22 22-5-10-5 10"></path><path d="M14 18h6"></path></svg>, title: 'Language Practice', text: 'Improve your skills in a second language in a real-world context.' },
+                    ]
+                },
+                students: {
+                    title: 'For Students',
+                    subtitle: 'Expand your horizons and enrich your professional training.',
+                    description: 'By participating in a COIL module, you not only fulfill your academic credits but also develop key competencies for the global job market. Get ready for a unique challenge!',
+                    cta: 'View all courses'
+                },
+                faculty: {
+                    title: 'For Faculty & Universities',
+                    subtitle: 'Internationalize your curriculum and create global academic networks.',
+                    description: 'Design a COIL module in collaboration with a colleague from a foreign university. Enrich your course, offer your students a unique experience, and publish the results of your teaching innovation.',
+                    cta: 'Become a partner',
+                    gemini_title: '✨ COIL Partner Assistant',
+                    gemini_prompt: 'Enter your course topic (e.g., "Artificial Intelligence", "Sustainable Architecture"):',
+                    gemini_button: 'Find Potential Partners',
+                    gemini_loading: 'Searching for partners...',
+                    gemini_error: 'An error occurred. Please try again.',
+                    gemini_results_title: 'Partner Suggestions',
+                    gemini_disclaimer: 'These suggestions are AI-generated and should be verified.',
+                },
+                footer: {
+                    aboutTitle: 'COIL IPN',
+                    aboutText: 'An initiative of the Instituto Politécnico Nacional for the internationalization of higher education.',
+                    linksTitle: 'Navigation',
+                    contactTitle: 'Contact',
+                    contactEmail: 'pjguzmanp@ipn.mx',
+                    contactPhone: '+52 55 5729 6000 ext. 57425',
+                    copyright: 'Instituto Politécnico Nacional. Some rights reserved.'
+                },
+                coursesView: {
+                    title: 'Available COIL Courses',
+                    button: 'View Details & Register'
+                },
+                formView: {
+                    backButton: 'Back to Courses',
+                    title: 'Registration Form',
+                    courseLabel: 'Course',
+                    personalDataLegend: 'Personal Data',
+                    firstNameLabel: '* First Name(s)',
+                    lastName1Label: '* Paternal Last Name',
+                    lastName2Label: '* Maternal Last Name',
+                    genderLabel: '* Gender',
+                    genderMale: 'Male',
+                    genderFemale: 'Female',
+                    genderOther: 'Other',
+                    genderPreferNot: 'Prefer not to say',
+                    ageLabel: '* Age',
+                    contactLegend: 'Contact and Residence Information',
+                    cityLabel: '* City',
+                    stateLabel: '* State',
+                    countryLabel: '* Country',
+                    zipLabel: '* Postal Code',
+                    emailLabel: '* Email Address',
+                    academicLegend: 'Academic Information',
+                    studiesLabel: '* Highest level of education',
+                    studiesHighSchool: 'High School',
+                    studiesBachelor: "Bachelor's Degree",
+                    studiesMaster: "Master's Degree",
+                    studiesDoctorate: 'Doctorate',
+                    studiesOther: 'Other',
+                    institutionLabel: '* Graduating Institution',
+                    isIpnMemberLabel: '* Are you part of the IPN community?',
+                    yes: 'Yes',
+                    no: 'No',
+                    ipnUnitLabel: '* IPN School, Center, or Unit',
+                    ipnUnitPlaceholder: 'e.g. ESCOM, UPIITA, CICS',
+                    ipnIdLabel: '* Student ID / Employee No.',
+                    submitButton: 'Submit Registration',
+                    submitting: 'Submitting...',
+                    submitSuccess: 'Registration sent successfully!',
+                    submitError: 'Error sending. Please try again.'
+                },
+                facultyInfoView: {
+                    title: 'Design a COIL Module',
+                    subtitle: 'Internationalize your classroom and connect your students with the world.',
+                    processTitle: 'How Does the Process Work?',
+                    step1Title: '1. Proposal',
+                    step1Text: 'Register your course details and initial ideas.',
+                    step2Title: '2. Partner Search',
+                    step2Text: 'We help you connect with a like-minded professor abroad.',
+                    step3Title: '3. Co-design',
+                    step3Text: 'Jointly develop the syllabus and collaborative activities.',
+                    step4Title: '4. Implementation',
+                    step4Text: 'Launch your COIL module with our technical and pedagogical support.',
+                    benefitsTitle: 'Guidelines and Benefits',
+                    benefit1: 'You will receive institutional support for establishing and formalizing the collaboration.',
+                    benefit2: 'Access to training and pedagogical resources on the COIL methodology.',
+                    benefit3: 'Opportunity to publish and present the results of your teaching innovation.',
+                    benefit4: 'Enrichment of your course and development of global competencies for your students.',
+                    benefit5: 'Flexibility to adapt the COIL module to your course duration and objectives (typically 4 to 8 weeks).',
+                    cta: 'Register COIL Course Proposal'
+                },
+                facultyFormView: {
+                    backButton: 'Back to Information',
+                    title: 'COIL Proposal Registration for Faculty',
+                    teacherInfoLegend: "Professor's Information",
+                    fullNameLabel: '* Full Name',
+                    emailLabel: '* Institutional Email Address',
+                    ipnUnitLabel: '* IPN School, Center, or Unit',
+                    ipnUnitPlaceholder: 'e.g. ESCOM, UPIITA, CICS',
+                    proposalInfoLegend: 'COIL Proposal Information',
+                    courseNameLabel: '* IPN Course Name',
+                    semesterLabel: '* Semester Taught',
+                    semesterPlaceholder: 'e.g. 2025-2',
+                    courseDescriptionLabel: '* Brief Course Description',
+                    coilIdeasLabel: 'Ideas for the COIL component (topics, projects, countries of interest)',
+                    coilIdeasPlaceholder: 'e.g. A comparative project on cybersecurity policies with a university in South Korea.',
+                    submitButton: 'Submit Proposal',
+                    submitting: 'Submitting...',
+                    submitSuccess: 'Proposal sent successfully!',
+                    submitError: 'Error sending. Please try again.'
+                },
+                publicationsView: {
+                    title: 'IPN COIL Publications',
+                    intro: 'Explore a selection of articles, research papers, and presentations documenting the impact and best practices of the COIL methodology in our community.',
+                    publications: [
+                        { title: 'The Impact of Intercultural Collaboration on Engineering Competencies.', authors: 'García, M. & Schmidt, H.', journal: 'Journal of Educational Innovation, Vol. 12, No. 3, 2024.', url: '#' },
+                        { title: 'Assessment Strategies in COIL Learning Environments.', authors: 'Pérez, L. & Watanabe, K.', journal: 'Proceedings of the International Conference on Distance Education, 2023.', url: '#' },
+                        { title: 'Software Development in Global Teams: A COIL Case Study.', authors: 'Rodríguez, A., Chen, L. & Smith, J.', journal: 'Journal of Computer Science Education, 2024.', url: '#' }
+                    ]
+                },
+                eventView: {
+                    title: 'First IPN COIL Symposium 2025',
+                    subtitle: 'Connecting Classrooms, Transforming the Future',
+                    date: 'November 28, 2025 | "Jaime Torres Bodet" Auditorium, Zacatenco',
+                    description: 'We invite you to the First IPN COIL Symposium, an event designed to celebrate and share internationalization-at-home experiences. Discover innovative projects, connect with colleagues from around the world, and learn how you can be part of this educational revolution.',
+                    objectiveTitle: 'Symposium Objectives',
+                    objectives: [
+                        'Showcase the results of COIL projects implemented over the last year.',
+                        'Facilitate networking between IPN faculty and partner university faculty.',
+                        'Offer practical workshops on designing and implementing COIL modules.',
+                        'Inspire more faculty and students to participate in future collaborations.'
+                    ],
+                    programTitle: 'Event Schedule',
+                    programItems: [
+                        { time: '09:00 - 09:30', activity: 'Registration & Welcome Coffee' },
+                        { time: '09:30 - 10:00', activity: 'Opening Ceremony & Welcome Remarks' },
+                        { time: '10:00 - 11:30', activity: 'Panel: "The Impact of COIL on Professional Training"' },
+                        { time: '11:30 - 13:00', activity: 'COIL Student Project Showcase' },
+                        { time: '13:00 - 14:30', activity: 'Lunch & Networking' },
+                        { time: '14:30 - 16:00', activity: 'Concurrent Workshops (Syllabus design, Digital tools)' },
+                        { time: '16:00 - 16:30', activity: 'Closing Ceremony & Awards' },
+                    ],
+                    cta: 'Register Now'
+                },
+                 resourcesView: {
+                    title: 'COIL IPN Resources',
+                    intro: 'Find guides, templates, and tools to successfully plan, design, and implement your COIL modules.',
+                    backButton: 'Back to Resources',
+                    loading: 'Loading resources...',
+                    categories: {
+                       'Articles': { title: 'Articles', image: 'https://images.unsplash.com/photo-1544947950-fa07a98ba85e?q=80&w=800&auto=format&fit=crop'},
+                       'Books': { title: 'Books', image: 'https://images.unsplash.com/photo-1524995767962-b1f4b8a3a3b1?q=80&w=800&auto=format&fit=crop'},
+                       'Infographics': { title: 'Infographics', image: 'https://images.unsplash.com/photo-1525268771113-32d9e9021a97?q=80&w=800&auto=format&fit=crop'},
+                       'Tutorials': { title: 'Tutorials', image: 'https://images.unsplash.com/photo-1578916171728-46686eac8d58?q=80&w=800&auto=format&fit=crop'},
+                       'Workbook': { title: 'Workbook', image: 'https://images.unsplash.com/photo-1517048676732-d65bc937f952?q=80&w=800&auto=format&fit=crop'},
+                       'Miscellaneous': { title: 'Miscellaneous', image: 'https://images.unsplash.com/photo-1495020689067-958852a7765e?q=80&w=800&auto=format&fit=crop'},
+                    }
+                }
+            }
+        };
+        
+        // Datos de ejemplo para los cursos. En una aplicación real, esto vendría de una base de datos o API.
+        const courses = {
+            es: [
+                { id: 1, title: 'Inglés técnico para la industria de semiconductores', university: 'Arizona State University', country: 'EE. UU.', description: 'Desarrolla habilidades de comunicación en inglés para el sector de alta tecnología, enfocándote en la terminología de semiconductores.', image: 'https://images.unsplash.com/photo-1616400619175-595b61df1644?q=80&w=2070&auto=format&fit=crop' },
+                { id: 2, title: 'Innovación y Emprendimiento Social', university: 'University of Waterloo', country: 'Canadá', description: 'Colabora en un proyecto para resolver un problema social de tu comunidad utilizando metodologías de innovación y modelos de negocio sostenibles.', image: 'https://images.unsplash.com/photo-1542744095-2DAd1d1f67b221?q=80&w=2070&auto=format&fit=crop' },
+                { id: 3, title: 'Análisis de Datos para Políticas Públicas', university: 'Hertie School', country: 'Alemania', description: 'Aprende a utilizar herramientas de análisis de datos para evaluar y proponer soluciones a problemas de política pública a nivel internacional.', image: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?q=80&w=2070&auto=format&fit=crop' }
+            ],
+            en: [
+                { id: 1, title: 'Technical English for the Semiconductor Industry', university: 'Arizona State University', country: 'USA', description: 'Develop English communication skills for the high-tech sector, focusing on semiconductor terminology.', image: 'https://images.unsplash.com/photo-1616400619175-595b61df1644?q=80&w=2070&auto=format&fit=crop' },
+                { id: 2, title: 'Social Innovation and Entrepreneurship', university: 'University of Waterloo', country: 'Canada', description: 'Collaborate on a project to solve a social problem in your community using innovation methodologies and sustainable business models.', image: 'https://images.unsplash.com/photo-1542744095-2DAd1d1f67b221?q=80&w=2070&auto=format&fit=crop' },
+                { id: 3, title: 'Data Analysis for Public Policy', university: 'Hertie School', country: 'Germany', description: 'Learn to use data analysis tools to evaluate and propose solutions to international public policy problems.', image: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?q=80&w=2070&auto=format&fit=crop' }
+            ]
+        };
+
+        // Estos datos simulan lo que tendríamos en nuestra base de datos Firestore.
+        // La clave es el nombre de la categoría, y el valor es un array de recursos.
+        const resourcesData = {
+            'Artículos': [
+                { id: 1, title: 'De la crisis a la oportunidad: Internacionalización de la educación superior después de la COVID-19', author: 'Santiago Castiello-Gutiérrez, Martín P. Pantoja Aguilar, César Eduardo Gutiérrez Jurado', year: 2022, url: '#' },
+                { id: 2, title: 'Virtual Internationalization in Higher Education. Innovative University: Digital -- International -- Transformative', author: 'Bruhn, Elisa', year: 2020, url: '#' }
+            ],
+            'Libros': [
+                 { id: 3, title: 'Teaching, Technology, and Teacher Education during the COVID-19 Pandemic: Stories from the Field', author: 'Richard E. Ferdig (Editor), Emily Baumgartner (Editor), Richard Hartshorne (Editor)', year: 2020, url: '#' },
+                 { id: 4, title: 'Race After Technology', author: 'Ruha Benjamin', year: 2019, url: '#' }
+            ]
+            // Se pueden agregar más categorías y recursos aquí.
+        };
+
+        const WelcomeAvatar = () => {
+            const [isOpen, setIsOpen] = useState(true);
+            const [isMuted, setIsMuted] = useState(true);
+            const [isPlaying, setIsPlaying] = useState(true);
+            const videoRef = useRef(null);
+
+            const toggleMute = () => {
+                const video = videoRef.current;
+                if (video) {
+                    video.muted = !video.muted;
+                    setIsMuted(!isMuted);
+                }
+            };
+
+            const togglePlay = () => {
+                const video = videoRef.current;
+                if (video) {
+                    if (video.paused) {
+                        video.play();
+                        setIsPlaying(true);
+                    } else {
+                        video.pause();
+                        setIsPlaying(false);
+                    }
+                }
+            };
+             
+             useEffect(() => {
+                const video = videoRef.current;
+                if (video && isPlaying) {
+                    video.play().catch(error => {
+                        console.log("Autoplay was prevented by browser policy.");
+                        setIsPlaying(false);
+                    });
+                }
+            }, [isPlaying]);
+
+
+            if (!isOpen) {
+                return (
+                    <button onClick={() => setIsOpen(true)} className="fixed bottom-5 right-5 z-50 bg-[#003f72] h-16 w-16 rounded-full shadow-lg flex items-center justify-center text-white hover:bg-[#6a1b57] transition-all transform hover:scale-110">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                    </button>
+                );
+            }
+
+            return (
+                <div className="fixed bottom-5 right-5 z-50 w-48 h-auto bg-transparent rounded-xl overflow-hidden animate-fade-in-up">
+                     <div className="absolute top-2 right-2 z-20 flex flex-col space-y-2">
+                         <button onClick={() => setIsOpen(false)} className="text-white bg-black/30 rounded-full p-1 hover:bg-black/60 transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                        </button>
+                         <button onClick={toggleMute} className="text-white bg-black/30 rounded-full p-1 hover:bg-black/60 transition-colors">
+                            {isMuted ? (
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line></svg>
+                            ) : (
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+                            )}
+                        </button>
+                        <button onClick={togglePlay} className="text-white bg-black/30 rounded-full p-1 hover:bg-black/60 transition-colors">
+                            {isPlaying ? (
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>
+                            ) : (
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                            )}
+                        </button>
+                     </div>
+                     <video
+                        ref={videoRef}
+                        src="https://files.catbox.moe/c5wvub.mp4"
+                        autoPlay
+                        loop
+                        muted
+                        playsInline
+                        className="w-full h-full object-cover rounded-xl"
+                     />
+                </div>
+            );
+        };
+
+
+        // Componente principal de la aplicación.
+        const App = () => {
+            // ---- ESTADOS ----
+            const [language, setLanguage] = useState('es');
+            const [scrolled, setScrolled] = useState(false);
+            const [view, setView] = useState('home'); 
+            const [selectedCourse, setSelectedCourse] = useState(null);
+            const [selectedResourceCategory, setSelectedResourceCategory] = useState(null);
+            
+            const [avatarState, setAvatarState] = useState({
+                isOpen: true,
+                isMuted: true,
+                isPlaying: true,
+            });
+
+            
+            const t = content[language];
+            
+            // ---- FUNCIONES ----
+            const handleNavigate = (newView, data = null) => {
+                if (newView === 'form') {
+                    setSelectedCourse(data);
+                }
+                if (newView === 'resourceDetail'){
+                    setSelectedResourceCategory(data);
+                }
+                setView(newView);
+                window.scrollTo(0, 0);
+            }
+
+            // ---- EFECTOS SECUNDARIOS ----
+            useEffect(() => {
+                const handleScroll = () => {
+                    const isScrolled = window.scrollY > 10;
+                    if (isScrolled !== scrolled) {
+                        setScrolled(isScrolled);
+                    }
+                };
+                document.addEventListener('scroll', handleScroll, { passive: true });
+                return () => document.removeEventListener('scroll', handleScroll);
+            }, [scrolled]);
+            
+            // ---- SUB-COMPONENTES ----
+            
+            const Header = () => (
+                <header className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${scrolled || view !== 'home' ? 'bg-[#003f72]/95 shadow-lg backdrop-blur-sm' : 'bg-transparent'}`}>
+                    <div className="w-full mx-auto px-6 lg:px-12 py-3 flex justify-between items-center">
+                        <div className="flex items-center space-x-4">
+                            <button onClick={() => handleNavigate('home')} className="flex items-center space-x-4">
+                                <img src="https://i.postimg.cc/pXqPPMCm/Sin-t-tulo-3.png" alt="Logo Secretaría Académica IPN" className="h-[4.5rem]" />
+                            </button>
+                        </div>
+                        <nav className="hidden lg:flex items-center space-x-4 text-white">
+                           { view === 'home' ? (
+                               <>
+                                <a href="#about" className="hover:text-gray-200 transition-colors">{t.nav.about}</a>
+                                <button onClick={() => handleNavigate('publications')} className="hover:text-gray-200 transition-colors">{t.nav.publications}</button>
+                                <button onClick={() => handleNavigate('resources')} className="hover:text-gray-200 transition-colors">{t.nav.resources}</button>
+                                <button onClick={() => handleNavigate('event')} className="hover:text-gray-200 transition-colors">{t.nav.event}</button>
+                                <a href="#contact" className="hover:text-gray-200 transition-colors">{t.nav.contact}</a>
+                               </>
+                           ) : (
+                                <>
+                                <button onClick={() => handleNavigate('home')} className="hover:text-gray-200 transition-colors">{t.nav.home}</button>
+                                <button onClick={() => handleNavigate('publications')} className="hover:text-gray-200 transition-colors">{t.nav.publications}</button>
+                                <button onClick={() => handleNavigate('resources')} className="hover:text-gray-200 transition-colors">{t.nav.resources}</button>
+                                <button onClick={() => handleNavigate('event')} className="hover:text-gray-200 transition-colors">{t.nav.event}</button>
+                                </>
+                           )}
+                        </nav>
+                        <LanguageSwitcher />
+                    </div>
+                </header>
+            );
+
+            const LanguageSwitcher = () => (
+                <div className="flex items-center space-x-1">
+                    <button onClick={() => setLanguage('es')} className={`px-3 py-1 text-sm rounded-md transition-colors ${language === 'es' ? 'bg-white text-blue-900 font-semibold' : 'text-white hover:bg-white/20'}`}>ES</button>
+                    <span className="text-white/50">|</span>
+                    <button onClick={() => setLanguage('en')} className={`px-3 py-1 text-sm rounded-md transition-colors ${language === 'en' ? 'bg-white text-blue-900 font-semibold' : 'text-white hover:bg-white/20'}`}>EN</button>
+                </div>
+            );
+            
+            const Footer = () => (
+                <footer id="contact" className="bg-[#002f54] text-white">
+                    <div className="container mx-auto px-6 py-12">
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+                            <div className="md:col-span-2"><h3 className="text-xl font-bold">{t.footer.aboutTitle}</h3><p className="mt-2 text-gray-300 max-w-sm">{t.footer.aboutText}</p></div>
+                            <div>
+                                <h3 className="text-xl font-bold">{t.footer.linksTitle}</h3>
+                                <ul className="mt-4 space-y-2">
+                                    <li><button onClick={() => {handleNavigate('home'); setTimeout(() => document.getElementById('about')?.scrollIntoView(), 0);}} className="text-gray-300 hover:text-white transition-colors text-left">{t.nav.about}</button></li>
+                                    <li><button onClick={() => handleNavigate('publications')} className="text-gray-300 hover:text-white transition-colors text-left">{t.nav.publications}</button></li>
+                                     <li><button onClick={() => handleNavigate('resources')} className="text-gray-300 hover:text-white transition-colors text-left">{t.nav.resources}</button></li>
+                                    <li><button onClick={() => handleNavigate('event')} className="text-gray-300 hover:text-white transition-colors text-left">{t.nav.event}</button></li>
+                                </ul>
+                            </div>
+                            <div><h3 className="text-xl font-bold">{t.footer.contactTitle}</h3><ul className="mt-4 space-y-2 text-gray-300"><li>{t.footer.contactEmail}</li><li>{t.footer.contactPhone}</li></ul></div>
+                        </div>
+                        <div className="mt-12 border-t border-gray-700 pt-8 text-center text-gray-400"><p>&copy; {new Date().getFullYear()} {t.footer.copyright}</p></div>
+                    </div>
+                </footer>
+            );
+
+            const HomeView = () => {
+                const [courseTopic, setCourseTopic] = useState('');
+                const [partnerSuggestions, setPartnerSuggestions] = useState([]);
+                const [isLoading, setIsLoading] = useState(false);
+                const [error, setError] = useState(null);
+                
+                const handleFindPartners = async () => {
+                    if (!courseTopic.trim()) return;
+                    setIsLoading(true);
+                    setError(null);
+                    setPartnerSuggestions([]);
+                    
+                    const apiKey = "";
+                    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+                    const systemPrompt = "You are an expert academic partnership coordinator. Your task is to identify three potential universities for a COIL collaboration based on a professor's course topic. For each university, provide a brief rationale and a concrete project idea.";
+                    const userQuery = `A professor at IPN in Mexico is teaching a course on "${courseTopic}". Identify three excellent, non-Spanish speaking universities from different countries that are strong in this field. For each, provide: a) universityName, b) country, c) a brief rationale (2-3 sentences) why they are a good match, and d) a specific, creative COIL projectIdea.`;
+                    const payload = { contents: [{ parts: [{ text: userQuery }] }], systemInstruction: { parts: [{ text: systemPrompt }] }, generationConfig: { responseMimeType: "application/json", responseSchema: { type: "ARRAY", items: { type: "OBJECT", properties: { "universityName": { "type": "STRING" }, "country": { "type": "STRING" }, "rationale": { "type": "STRING" }, "projectIdea": { "type": "STRING" }, }, required: ["universityName", "country", "rationale", "projectIdea"] } } } };
+                    
+                    try {
+                        const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                        if (!response.ok) throw new Error(`API call failed with status: ${response.status}`);
+                        const result = await response.json();
+                        if (result.candidates && result.candidates.length > 0) {
+                            const jsonText = result.candidates[0].content.parts[0].text;
+                            const parsedSuggestions = JSON.parse(jsonText);
+                            setPartnerSuggestions(parsedSuggestions);
+                        } else { throw new Error("No suggestions received from the API."); }
+                    } catch (err) {
+                        console.error("Error fetching partner suggestions:", err);
+                        setError(t.faculty.gemini_error);
+                    } finally {
+                        setIsLoading(false);
+                    }
+                };
+                
+                return (
+                    <>
+                        <section className="relative min-h-screen flex items-center justify-center text-white pt-20">
+                            <div className="absolute inset-0 hero-gradient"></div>
+                            <img src="https://i.postimg.cc/4dfTD8c6/Generated-Image-September-19-2025-8-42-AMok.png" alt="Estudiantes colaborando internacionalmente" className="absolute inset-0 w-full h-full object-cover opacity-20"/>
+                            <div className="relative container mx-auto px-6 text-center z-10">
+                                <h1 className="text-4xl md:text-6xl font-extrabold mb-4 leading-tight tracking-tight">{t.hero.title}</h1>
+                                <p className="text-lg md:text-xl max-w-3xl mx-auto mb-12 font-light text-gray-200">{t.hero.subtitle}</p>
+                                
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+                                    <div className="bg-white/10 backdrop-blur-sm p-8 rounded-xl text-center flex flex-col items-center justify-between">
+                                        <div>
+                                            <h2 className="text-2xl font-bold">{t.hero.studentPromptTitle}</h2>
+                                            <p className="mt-2 mb-6 text-gray-200">{t.hero.studentPromptSubtitle}</p>
+                                        </div>
+                                        <button onClick={() => handleNavigate('courses')} className="w-full sm:w-auto bg-white text-[#6a1b57] font-bold py-3 px-8 rounded-full text-lg hover:bg-gray-200 transition-transform transform hover:scale-105 shadow-lg">{t.hero.ctaStudent}</button>
+                                    </div>
+                                    <div className="bg-white/10 backdrop-blur-sm p-8 rounded-xl text-center flex flex-col items-center justify-between">
+                                        <div>
+                                            <h2 className="text-2xl font-bold">{t.hero.facultyPromptTitle}</h2>
+                                            <p className="mt-2 mb-6 text-gray-200">{t.hero.facultyPromptSubtitle}</p>
+                                        </div>
+                                        <button onClick={() => handleNavigate('facultyInfo')} className="w-full sm:w-auto bg-transparent border-2 border-white text-white font-bold py-3 px-8 rounded-full text-lg hover:bg-white hover:text-[#003f72] transition-all duration-300 shadow-lg">{t.hero.ctaFaculty}</button>
+                                    </div>
+                                </div>
+
+                                <div className="mt-12 text-center">
+                                    <a href="https://aprendizajemodular.dev.ipn.mx/login/index.php" target="_blank" rel="noopener noreferrer" className="text-white/80 hover:text-white hover:underline transition-colors inline-flex items-center group">
+                                        {t.hero.loginPrompt} <span className="font-bold ml-2 group-hover:translate-x-1 transition-transform">{t.hero.loginLink}</span>
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="ml-1.5 opacity-80 group-hover:opacity-100 transition-opacity group-hover:translate-x-1 transition-transform"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                                    </a>
+                                </div>
+                            </div>
+                        </section>
+
+                        <section id="about" className="py-20 bg-white"><div className="container mx-auto px-6"><div className="text-center mb-12"><h2 className="text-3xl md:text-4xl font-bold text-[#003f72]">{t.about.title}</h2><p className="mt-4 max-w-3xl mx-auto text-lg text-gray-600">{t.about.description}</p></div><div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">{t.about.benefits.map((item, index) => (<div key={index} className="bg-gray-50 p-6 rounded-lg shadow-sm hover:shadow-xl transition-shadow duration-300 text-center"><div className="inline-flex items-center justify-center w-16 h-16 mb-4 rounded-full bg-[#6a1b57]/10 text-[#6a1b57]">{item.svg}</div><h3 className="text-xl font-semibold mb-2">{item.title}</h3><p className="text-gray-600">{item.text}</p></div>))}</div></div></section>
+                        
+                        <section className="py-20"><div className="container mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-12 items-start"><div id="students" className="bg-white p-10 rounded-xl shadow-lg"><h2 className="text-3xl font-bold text-[#003f72]">{t.students.title}</h2><p className="text-lg text-gray-500 mt-2 mb-4">{t.students.subtitle}</p><p className="mb-6">{t.students.description}</p><button onClick={() => handleNavigate('courses')} className="bg-[#003f72] text-white font-bold py-3 px-6 rounded-lg hover:bg-[#002f54] transition-colors">{t.students.cta}</button></div><div id="faculty" className="bg-[#6a1b57] text-white p-10 rounded-xl shadow-lg"><h2 className="text-3xl font-bold">{t.faculty.title}</h2><p className="text-lg text-gray-200 mt-2 mb-4">{t.faculty.subtitle}</p><p className="mb-6 text-gray-100">{t.faculty.description}</p><div className="bg-white/10 p-6 rounded-lg mt-6"><h3 className="text-2xl font-bold">{t.faculty.gemini_title}</h3><label className="block mt-4 text-sm font-medium text-gray-200">{t.faculty.gemini_prompt}</label><input type="text" value={courseTopic} onChange={(e) => setCourseTopic(e.target.value)} className="mt-2 w-full px-4 py-2 rounded-md bg-white/20 text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-white" placeholder="Ej: Marketing Digital"/><button onClick={handleFindPartners} disabled={isLoading} className="w-full mt-4 bg-white text-[#6a1b57] font-bold py-3 px-6 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center">{isLoading && <div className="spinner w-5 h-5 border-4 rounded-full mr-3"></div>}{isLoading ? t.faculty.gemini_loading : t.faculty.gemini_button}</button></div>{error && <div className="mt-4 p-4 bg-red-500/50 text-white rounded-md">{error}</div>}{partnerSuggestions.length > 0 && (<div className="mt-6"><h4 className="text-xl font-bold">{t.faculty.gemini_results_title}</h4><p className="text-xs text-gray-300 mb-4">{t.faculty.gemini_disclaimer}</p><div className="space-y-4">{partnerSuggestions.map((suggestion, index) => (<div key={index} className="bg-white/10 p-4 rounded-lg"><h5 className="font-bold text-lg">{suggestion.universityName} <span className="font-normal text-sm opacity-80">- {suggestion.country}</span></h5><p className="text-sm mt-2 text-gray-200"><strong>Razón:</strong> {suggestion.rationale}</p><p className="text-sm mt-2 text-gray-200"><strong>Idea de Proyecto:</strong> {suggestion.projectIdea}</p></div>))}</div></div>)}</div></div></section>
+                    </>
+                )
+            };
+            
+            const CoursesView = () => (
+                <div className="bg-white min-h-screen pt-32 pb-12">
+                    <div className="container mx-auto px-6">
+                        <h1 className="text-4xl font-bold text-center text-[#003f72] mb-12">{t.coursesView.title}</h1>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                            {courses[language].map(course => (
+                                <div key={course.id} className="bg-gray-50 rounded-xl shadow-lg overflow-hidden flex flex-col transform hover:scale-105 hover:shadow-2xl transition-all duration-300">
+                                    <img src={course.image} alt={course.title} className="w-full h-48 object-cover" />
+                                    <div className="p-6 flex flex-col flex-grow">
+                                        <h2 className="text-2xl font-bold text-[#6a1b57]">{course.title}</h2>
+                                        <p className="mt-2 text-sm text-gray-600 font-semibold">{course.university}, {course.country}</p>
+                                        <p className="mt-4 text-gray-700 flex-grow">{course.description}</p>
+                                        <button onClick={() => handleNavigate('form', course)} className="mt-6 w-full bg-[#003f72] text-white font-bold py-3 px-6 rounded-lg hover:bg-[#002f54] transition-colors">
+                                            {t.coursesView.button}
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            );
+
+            const FormView = () => {
+                const [formData, setFormData] = useState({
+                    firstName: '', lastName1: '', lastName2: '', gender: '', age: '',
+                    city: '', state: '', country: 'México', zip: '', email: '',
+                    studies: '', institution: '', isIpnMember: null, ipnUnit: '', ipnId: ''
+                });
+                const [isSubmitting, setIsSubmitting] = useState(false);
+                const [submitStatus, setSubmitStatus] = useState(''); // success, error, ''
+                const [db, setDb] = useState(null);
+
+                 useEffect(() => {
+                    // Prepara la conexión a Firebase cuando el componente se monta
+                    const firebaseConfig = {
+                      apiKey: "AIzaSyDWM_lkzZqEx5Jsx6rzOJ9o95Ed164eJWI",
+                      authDomain: "coil-ipn-web.firebaseapp.com",
+                      projectId: "coil-ipn-web",
+                      storageBucket: "coil-ipn-web.appspot.com",
+                      messagingSenderId: "1022741543722",
+                      appId: "1:1022741543722:web:8ec6c4e00dc7e6ed07bc53",
+                      measurementId: "G-W56WBE9PWJ"
+                    };
+                    
+                    try {
+                         if (Object.keys(firebaseConfig).length > 0 && window.firebase) {
+                            const app = window.firebase.initializeApp(firebaseConfig);
+                            const firestoreDb = window.firebase.getFirestore(app);
+                            setDb(firestoreDb);
+                        }
+                    } catch(e) {
+                        console.error("Error al inicializar Firebase. ¿Pegaste tu config?", e)
+                    }
+                }, []);
+                
+                const handleChange = (e) => {
+                    const { name, value } = e.target;
+                    setFormData(prevState => ({ ...prevState, [name]: value }));
+                };
+
+                const handleSubmit = async (e) => {
+                    e.preventDefault();
+                    if(!db) {
+                        console.error("La base de datos de Firestore no está inicializada.");
+                        setSubmitStatus('error');
+                        return;
+                    }
+                    setIsSubmitting(true);
+                    setSubmitStatus('');
+                    
+                    try {
+                        const dataToSubmit = {
+                            ...formData,
+                            course: selectedCourse.title,
+                            submittedAt: new Date().toISOString()
+                        };
+                        await window.firebase.addDoc(window.firebase.collection(db, "studentApplications"), dataToSubmit);
+                        setSubmitStatus('success');
+                        e.target.reset();
+                        setFormData({
+                            firstName: '', lastName1: '', lastName2: '', gender: '', age: '',
+                            city: '', state: '', country: 'México', zip: '', email: '',
+                            studies: '', institution: '', isIpnMember: null, ipnUnit: '', ipnId: ''
+                        });
+                    } catch (error) {
+                        console.error("Error writing document: ", error);
+                        setSubmitStatus('error');
+                    } finally {
+                        setIsSubmitting(false);
+                    }
+                };
+                
+                return (
+                    <div className="bg-gray-100 min-h-screen pt-32 pb-12">
+                        <div className="container mx-auto px-6">
+                           <button onClick={() => handleNavigate('courses')} className="mb-6 inline-flex items-center text-[#003f72] hover:text-[#6a1b57]">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                                {t.formView.backButton}
+                           </button>
+                           <div className="bg-white p-8 rounded-xl shadow-lg max-w-4xl mx-auto">
+                                <h1 className="text-2xl md:text-3xl font-bold text-[#003f72] mb-2">{t.formView.title}</h1>
+                                <p className="text-lg text-[#6a1b57] mb-8">{t.formView.courseLabel}: "{selectedCourse.title}"</p>
+                                <form onSubmit={handleSubmit}>
+                                    <fieldset className="mb-8"><legend className="text-xl font-semibold text-gray-800 border-b-2 border-[#6a1b57] pb-2 mb-6 w-full">{t.formView.personalDataLegend}</legend><div className="grid grid-cols-1 md:grid-cols-3 gap-6"><div><label className="block text-sm font-medium text-gray-700">{t.formView.firstNameLabel}</label><input name="firstName" onChange={handleChange} type="text" required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-[#6a1b57] focus:border-[#6a1b57]"/></div><div><label className="block text-sm font-medium text-gray-700">{t.formView.lastName1Label}</label><input name="lastName1" onChange={handleChange} type="text" required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-[#6a1b57] focus:border-[#6a1b57]"/></div><div><label className="block text-sm font-medium text-gray-700">{t.formView.lastName2Label}</label><input name="lastName2" onChange={handleChange} type="text" required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-[#6a1b57] focus:border-[#6a1b57]"/></div><div><label className="block text-sm font-medium text-gray-700">{t.formView.genderLabel}</label><select name="gender" onChange={handleChange} required className="mt-1 block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-[#6a1b57] focus:border-[#6a1b57]"><option value="">-- Selecciona --</option><option>{t.formView.genderMale}</option><option>{t.formView.genderFemale}</option><option>{t.formView.genderOther}</option><option>{t.formView.genderPreferNot}</option></select></div><div><label className="block text-sm font-medium text-gray-700">{t.formView.ageLabel}</label><input name="age" onChange={handleChange} type="number" required min="18" className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-[#6a1b57] focus:border-[#6a1b57]"/></div></div></fieldset>
+                                    <fieldset className="mb-8"><legend className="text-xl font-semibold text-gray-800 border-b-2 border-[#6a1b57] pb-2 mb-6 w-full">{t.formView.contactLegend}</legend><div className="grid grid-cols-1 md:grid-cols-3 gap-6"><div><label className="block text-sm font-medium text-gray-700">{t.formView.cityLabel}</label><input name="city" onChange={handleChange} type="text" required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-[#6a1b57] focus:border-[#6a1b57]"/></div><div><label className="block text-sm font-medium text-gray-700">{t.formView.stateLabel}</label><input name="state" onChange={handleChange} type="text" required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-[#6a1b57] focus:border-[#6a1b57]"/></div><div><label className="block text-sm font-medium text-gray-700">{t.formView.countryLabel}</label><input name="country" onChange={handleChange} type="text" defaultValue="México" required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-[#6a1b57] focus:border-[#6a1b57]"/></div><div><label className="block text-sm font-medium text-gray-700">{t.formView.zipLabel}</label><input name="zip" onChange={handleChange} type="text" required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-[#6a1b57] focus:border-[#6a1b57]"/></div><div className="md:col-span-2"><label className="block text-sm font-medium text-gray-700">{t.formView.emailLabel}</label><input name="email" onChange={handleChange} type="email" required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-[#6a1b57] focus:border-[#6a1b57]"/></div></div></fieldset>
+                                    <fieldset className="mb-8"><legend className="text-xl font-semibold text-gray-800 border-b-2 border-[#6a1b57] pb-2 mb-6 w-full">{t.formView.academicLegend}</legend><div className="grid grid-cols-1 md:grid-cols-2 gap-6"><div><label className="block text-sm font-medium text-gray-700">{t.formView.studiesLabel}</label><select name="studies" onChange={handleChange} required className="mt-1 block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-[#6a1b57] focus:border-[#6a1b57]"><option value="">-- Selecciona --</option><option>{t.formView.studiesHighSchool}</option><option>{t.formView.studiesBachelor}</option><option>{t.formView.studiesMaster}</option><option>{t.formView.studiesDoctorate}</option><option>{t.formView.studiesOther}</option></select></div><div><label className="block text-sm font-medium text-gray-700">{t.formView.institutionLabel}</label><input name="institution" onChange={handleChange} type="text" required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-[#6a1b57] focus:border-[#6a1b57]"/></div><div className="md:col-span-2"><label className="block text-sm font-medium text-gray-700">{t.formView.isIpnMemberLabel}</label><div className="flex items-center space-x-4 mt-2"><label className="flex items-center"><input type="radio" name="isIpnMember" value="yes" onChange={handleChange} className="h-4 w-4 text-[#6a1b57] border-gray-300 focus:ring-[#6a1b57]"/> <span className="ml-2">{t.formView.yes}</span></label><label className="flex items-center"><input type="radio" name="isIpnMember" value="no" onChange={handleChange} className="h-4 w-4 text-[#6a1b57] border-gray-300 focus:ring-[#6a1b57]"/> <span className="ml-2">{t.formView.no}</span></label></div></div>{formData.isIpnMember === 'yes' && <><div className="md:col-span-2"><label className="block text-sm font-medium text-gray-700">{t.formView.ipnUnitLabel}</label><input name="ipnUnit" onChange={handleChange} type="text" placeholder={t.formView.ipnUnitPlaceholder} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-[#6a1b57] focus:border-[#6a1b57]"/></div><div><label className="block text-sm font-medium text-gray-700">{t.formView.ipnIdLabel}</label><input name="ipnId" onChange={handleChange} type="text" className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-[#6a1b57] focus:border-[#6a1b57]"/></div></>}</div></fieldset>
+                                    <div className="mt-8 text-center">
+                                        <button type="submit" disabled={isSubmitting} className="w-full md:w-auto bg-[#6a1b57] text-white font-bold py-3 px-12 rounded-lg hover:bg-[#521544] transition-colors text-lg shadow-lg disabled:opacity-50 flex items-center justify-center mx-auto">
+                                            {isSubmitting && <div className="spinner w-5 h-5 border-2 rounded-full mr-3"></div>}
+                                            {isSubmitting ? t.formView.submitting : t.formView.submitButton}
+                                        </button>
+                                        {submitStatus === 'success' && <p className="mt-4 text-green-600 font-semibold">{t.formView.submitSuccess}</p>}
+                                        {submitStatus === 'error' && <p className="mt-4 text-red-600 font-semibold">{t.formView.submitError}</p>}
+                                    </div>
+                                </form>
+                           </div>
+                        </div>
+                    </div>
+                )
+            };
+            
+            const FacultyInfoView = () => (
+                <div className="bg-white min-h-screen pt-32 pb-12">
+                    <div className="container mx-auto px-6 max-w-4xl">
+                        <h1 className="text-4xl font-bold text-center text-[#003f72] mb-4">{t.facultyInfoView.title}</h1>
+                        <p className="text-xl text-center text-gray-600 mb-12">{t.facultyInfoView.subtitle}</p>
+                        
+                        <div className="bg-gray-50 p-8 rounded-xl shadow-md mb-12">
+                            <h2 className="text-2xl font-bold text-[#6a1b57] mb-6">{t.facultyInfoView.processTitle}</h2>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 text-center">
+                                {/* Pasos del proceso */}
+                                <div className="flex flex-col items-center"><div className="bg-[#003f72]/10 text-[#003f72] rounded-full w-16 h-16 flex items-center justify-center mb-3"><svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg></div><h3 className="font-semibold mb-1">{t.facultyInfoView.step1Title}</h3><p className="text-sm text-gray-600">{t.facultyInfoView.step1Text}</p></div>
+                                <div className="flex flex-col items-center"><div className="bg-[#003f72]/10 text-[#003f72] rounded-full w-16 h-16 flex items-center justify-center mb-3"><svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg></div><h3 className="font-semibold mb-1">{t.facultyInfoView.step2Title}</h3><p className="text-sm text-gray-600">{t.facultyInfoView.step2Text}</p></div>
+                                <div className="flex flex-col items-center"><div className="bg-[#003f72]/10 text-[#003f72] rounded-full w-16 h-16 flex items-center justify-center mb-3"><svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg></div><h3 className="font-semibold mb-1">{t.facultyInfoView.step3Title}</h3><p className="text-sm text-gray-600">{t.facultyInfoView.step3Text}</p></div>
+                                <div className="flex flex-col items-center"><div className="bg-[#003f72]/10 text-[#003f72] rounded-full w-16 h-16 flex items-center justify-center mb-3"><svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15.05 5A5 5 0 0 1 19 8.95M15.05 1A9 9 0 0 1 23 8.94m-1 7.98v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.98z"></path></svg></div><h3 className="font-semibold mb-1">{t.facultyInfoView.step4Title}</h3><p className="text-sm text-gray-600">{t.facultyInfoView.step4Text}</p></div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <h2 className="text-2xl font-bold text-[#6a1b57] mb-6">{t.facultyInfoView.benefitsTitle}</h2>
+                            <ul className="list-disc list-inside space-y-3 text-gray-700">
+                                <li>{t.facultyInfoView.benefit1}</li>
+                                <li>{t.facultyInfoView.benefit2}</li>
+                                <li>{t.facultyInfoView.benefit3}</li>
+                                <li>{t.facultyInfoView.benefit4}</li>
+                                <li>{t.facultyInfoView.benefit5}</li>
+                            </ul>
+                        </div>
+                        
+                        <div className="mt-12 text-center">
+                            <button onClick={() => handleNavigate('facultyForm')} className="w-full md:w-auto bg-[#6a1b57] text-white font-bold py-3 px-12 rounded-lg hover:bg-[#521544] transition-colors text-lg shadow-lg">
+                                {t.facultyInfoView.cta}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+            
+            const FacultyFormView = () => {
+                const [formData, setFormData] = useState({});
+                const [isSubmitting, setIsSubmitting] = useState(false);
+                const [submitStatus, setSubmitStatus] = useState('');
+                const [db, setDb] = useState(null);
+
+                 useEffect(() => {
+                    const firebaseConfig = {
+                      apiKey: "AIzaSyDWM_lkzZqEx5Jsx6rzOJ9o95Ed164eJWI",
+                      authDomain: "coil-ipn-web.firebaseapp.com",
+                      projectId: "coil-ipn-web",
+                      storageBucket: "coil-ipn-web.appspot.com",
+                      messagingSenderId: "1022741543722",
+                      appId: "1:1022741543722:web:8ec6c4e00dc7e6ed07bc53",
+                      measurementId: "G-W56WBE9PWJ"
+                    };
+                    try {
+                         if (Object.keys(firebaseConfig).length > 0 && window.firebase) {
+                            const app = window.firebase.initializeApp(firebaseConfig);
+                            const firestoreDb = window.firebase.getFirestore(app);
+                            setDb(firestoreDb);
+                        }
+                    } catch(e) { console.error("Error initializing Firebase", e) }
+                }, []);
+                
+                const handleChange = (e) => {
+                    setFormData({ ...formData, [e.target.name]: e.target.value });
+                };
+
+                const handleSubmit = async (e) => {
+                    e.preventDefault();
+                    if(!db) {
+                        setSubmitStatus('error');
+                        return;
+                    }
+                    setIsSubmitting(true);
+                    setSubmitStatus('');
+                    
+                    try {
+                        const dataToSubmit = {
+                            ...formData,
+                            submittedAt: new Date().toISOString()
+                        };
+                        await window.firebase.addDoc(window.firebase.collection(db, "facultyProposals"), dataToSubmit);
+                        setSubmitStatus('success');
+                        e.target.reset();
+                        setFormData({});
+                    } catch (error) {
+                        console.error("Error writing document: ", error);
+                        setSubmitStatus('error');
+                    } finally {
+                        setIsSubmitting(false);
+                    }
+                };
+                return (
+                    <div className="bg-gray-100 min-h-screen pt-32 pb-12">
+                        <div className="container mx-auto px-6">
+                           <button onClick={() => handleNavigate('facultyInfo')} className="mb-6 inline-flex items-center text-[#003f72] hover:text-[#6a1b57]">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                                {t.facultyFormView.backButton}
+                           </button>
+                           <div className="bg-white p-8 rounded-xl shadow-lg max-w-4xl mx-auto">
+                                <h1 className="text-2xl md:text-3xl font-bold text-[#003f72] mb-8">{t.facultyFormView.title}</h1>
+                                <form onSubmit={handleSubmit}>
+                                    <fieldset className="mb-8"><legend className="text-xl font-semibold text-gray-800 border-b-2 border-[#6a1b57] pb-2 mb-6 w-full">{t.facultyFormView.teacherInfoLegend}</legend><div className="grid grid-cols-1 md:grid-cols-2 gap-6"><div><label className="block text-sm font-medium text-gray-700">{t.facultyFormView.fullNameLabel}</label><input name="fullName" onChange={handleChange} type="text" required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-[#6a1b57] focus:border-[#6a1b57]"/></div><div><label className="block text-sm font-medium text-gray-700">{t.facultyFormView.emailLabel}</label><input name="email" onChange={handleChange} type="email" required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-[#6a1b57] focus:border-[#6a1b57]"/></div><div className="md:col-span-2"><label className="block text-sm font-medium text-gray-700">{t.facultyFormView.ipnUnitLabel}</label><input name="ipnUnit" onChange={handleChange} type="text" placeholder={t.facultyFormView.ipnUnitPlaceholder} required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-[#6a1b57] focus:border-[#6a1b57]"/></div></div></fieldset>
+                                    <fieldset className="mb-8"><legend className="text-xl font-semibold text-gray-800 border-b-2 border-[#6a1b57] pb-2 mb-6 w-full">{t.facultyFormView.proposalInfoLegend}</legend><div className="grid grid-cols-1 md:grid-cols-2 gap-6"><div><label className="block text-sm font-medium text-gray-700">{t.facultyFormView.courseNameLabel}</label><input name="courseName" onChange={handleChange} type="text" required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-[#6a1b57] focus:border-[#6a1b57]"/></div><div><label className="block text-sm font-medium text-gray-700">{t.facultyFormView.semesterLabel}</label><input name="semester" onChange={handleChange} type="text" placeholder={t.facultyFormView.semesterPlaceholder} required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-[#6a1b57] focus:border-[#6a1b57]"/></div><div className="md:col-span-2"><label className="block text-sm font-medium text-gray-700">{t.facultyFormView.courseDescriptionLabel}</label><textarea name="courseDescription" onChange={handleChange} rows="3" required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-[#6a1b57] focus:border-[#6a1b57]"></textarea></div><div className="md:col-span-2"><label className="block text-sm font-medium text-gray-700">{t.facultyFormView.coilIdeasLabel}</label><textarea name="coilIdeas" onChange={handleChange} rows="4" placeholder={t.facultyFormView.coilIdeasPlaceholder} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-[#6a1b57] focus:border-[#6a1b57]"></textarea></div></div></fieldset>
+                                    <div className="mt-8 text-center">
+                                         <button type="submit" disabled={isSubmitting} className="w-full md:w-auto bg-[#6a1b57] text-white font-bold py-3 px-12 rounded-lg hover:bg-[#521544] transition-colors text-lg shadow-lg disabled:opacity-50 flex items-center justify-center mx-auto">
+                                            {isSubmitting && <div className="spinner w-5 h-5 border-2 rounded-full mr-3"></div>}
+                                            {isSubmitting ? t.facultyFormView.submitting : t.facultyFormView.submitButton}
+                                        </button>
+                                        {submitStatus === 'success' && <p className="mt-4 text-green-600 font-semibold">{t.facultyFormView.submitSuccess}</p>}
+                                        {submitStatus === 'error' && <p className="mt-4 text-red-600 font-semibold">{t.facultyFormView.submitError}</p>}
+                                    </div>
+                                </form>
+                           </div>
+                        </div>
+                    </div>
+                );
+            };
+            
+            const PublicationsView = () => (
+                <div className="bg-white min-h-screen pt-32 pb-12">
+                    <div className="container mx-auto px-6 max-w-4xl">
+                        <h1 className="text-4xl font-bold text-center text-[#003f72] mb-4">{t.publicationsView.title}</h1>
+                        <p className="text-xl text-center text-gray-600 mb-12">{t.publicationsView.intro}</p>
+                        <div className="space-y-8">
+                            {t.publicationsView.publications.map((pub, index) => (
+                                <div key={index} className="bg-gray-50 p-6 rounded-lg shadow-sm border-l-4 border-[#6a1b57]">
+                                    <h2 className="text-2xl font-bold text-[#003f72]">{pub.title}</h2>
+                                    <p className="text-md text-gray-600 my-2">{pub.authors}</p>
+                                    <p className="text-md italic text-gray-500 mb-4">{pub.journal}</p>
+                                    <a href={pub.url} target="_blank" rel="noopener noreferrer" className="font-semibold text-[#6a1b57] hover:underline">
+                                        Leer más...
+                                    </a>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            );
+            
+            const EventView = () => (
+                <div className="bg-gray-100 min-h-screen pt-24 pb-12">
+                    <div className="container mx-auto px-6 max-w-5xl">
+                        <div className="bg-gradient-to-r from-[#003f72] to-[#6a1b57] text-white p-10 rounded-xl shadow-2xl text-center mb-12">
+                            <h1 className="text-4xl font-extrabold mb-2">{t.eventView.title}</h1>
+                            <p className="text-2xl font-light mb-4">{t.eventView.subtitle}</p>
+                            <p className="text-lg bg-white/20 inline-block px-4 py-2 rounded-full">{t.eventView.date}</p>
+                        </div>
+                        
+                        <div className="bg-white p-8 rounded-xl shadow-lg grid grid-cols-1 md:grid-cols-3 gap-8">
+                            <div className="md:col-span-2">
+                                <p className="text-lg text-gray-700 leading-relaxed mb-8">{t.eventView.description}</p>
+                                
+                                <h2 className="text-2xl font-bold text-[#6a1b57] mb-4">{t.eventView.objectiveTitle}</h2>
+                                <ul className="list-disc list-inside space-y-2 text-gray-700 mb-8">
+                                    {t.eventView.objectives.map((obj, i) => <li key={i}>{obj}</li>)}
+                                </ul>
+                                <div className="text-center">
+                                <button className="w-full md:w-auto bg-[#6a1b57] text-white font-bold py-3 px-12 rounded-lg hover:bg-[#521544] transition-colors text-lg shadow-lg">
+                                    {t.eventView.cta}
+                                </button>
+                                </div>
+                            </div>
+                            <div className="md:col-span-1 bg-gray-50 p-6 rounded-lg border">
+                                <h2 className="text-2xl font-bold text-center text-[#003f72] mb-4">{t.eventView.programTitle}</h2>
+                                <ul className="space-y-4">
+                                    {t.eventView.programItems.map((item, i) => (
+                                        <li key={i} className="border-b pb-2">
+                                            <p className="font-bold text-gray-800">{item.activity}</p>
+                                            <p className="text-sm text-[#6a1b57]">{item.time}</p>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+            
+            const ResourcesView = () => (
+                <div className="bg-white min-h-screen pt-32 pb-12">
+                    <div className="container mx-auto px-6">
+                        <h1 className="text-4xl font-bold text-center text-[#003f72] mb-4">{t.resourcesView.title}</h1>
+                        <p className="text-xl text-center text-gray-600 mb-12 max-w-3xl mx-auto">{t.resourcesView.intro}</p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+                            {Object.values(t.resourcesView.categories).map((cat, index) => (
+                                <button onClick={() => handleNavigate('resourceDetail', cat.title)} key={index} className="group block rounded-lg overflow-hidden shadow-lg relative transform hover:-translate-y-2 transition-transform duration-300 text-left">
+                                    <img src={cat.image} alt={cat.title} className="w-full h-64 object-cover" />
+                                    <div className="absolute inset-0 bg-black/50 group-hover:bg-black/60 transition-colors duration-300 flex items-end">
+                                        <h2 className="text-white text-2xl font-bold p-6">{cat.title}</h2>
+                                    </div>
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            );
+            
+            const ResourceDetailView = ({ category }) => {
+                const [resources, setResources] = useState([]);
+                const [loading, setLoading] = useState(true);
+                const [db, setDb] = useState(null);
+
+                useEffect(() => {
+                    let isMounted = true;
+                    const setupFirebase = async () => {
+                        try {
+                            const firebaseConfig = {
+                              apiKey: "AIzaSyDWM_lkzZqEx5Jsx6rzOJ9o95Ed164eJWI",
+                              authDomain: "coil-ipn-web.firebaseapp.com",
+                              projectId: "coil-ipn-web",
+                              storageBucket: "coil-ipn-web.appspot.com",
+                              messagingSenderId: "1022741543722",
+                              appId: "1:1022741543722:web:8ec6c4e00dc7e6ed07bc53",
+                              measurementId: "G-W56WBE9PWJ"
+                            };
+
+                            if (Object.keys(firebaseConfig).length > 0) {
+                                const app = window.firebase.initializeApp(firebaseConfig);
+                                const firestoreDb = window.firebase.getFirestore(app);
+                                if(isMounted) setDb(firestoreDb);
+                                
+                                const auth = window.firebase.getAuth(app);
+                                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                                    await window.firebase.signInWithCustomToken(auth, __initial_auth_token);
+                                } else {
+                                    await window.firebase.signInAnonymously(auth);
+                                }
+                            } else {
+                                console.log("Configuración de Firebase no disponible.");
+                                if(isMounted) setLoading(false);
+                            }
+                        } catch (e) {
+                            console.error("Error al inicializar Firebase", e);
+                            if(isMounted) setLoading(false);
+                        }
+                    };
+                    setupFirebase();
+                    return () => { isMounted = false; };
+                }, []);
+                
+                useEffect(() => {
+                    let isMounted = true;
+                    const fetchResources = async () => {
+                         if(isMounted) setLoading(true);
+                         
+                         setTimeout(() => {
+                             if(isMounted) {
+                                const data = resourcesData[category] || [];
+                                setResources(data);
+                                setLoading(false);
+                             }
+                         }, 500);
+                    };
+                    
+                    fetchResources();
+                    return () => { isMounted = false; }
+                }, [db, category]);
+                
+                return (
+                    <div className="bg-gray-100 min-h-screen pt-32 pb-12">
+                        <div className="container mx-auto px-6 max-w-4xl">
+                            <button onClick={() => handleNavigate('resources')} className="mb-8 inline-flex items-center text-[#003f72] hover:text-[#6a1b57] font-semibold">
+                               <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                                {t.resourcesView.backButton}
+                            </button>
+                            
+                            <h1 className="text-4xl font-bold text-center text-[#003f72] mb-12">{category}</h1>
+
+                            {loading ? (
+                                <p className="text-center text-gray-600">{t.resourcesView.loading}</p>
+                            ) : (
+                                <div className="bg-white p-8 rounded-xl shadow-lg space-y-6">
+                                    {resources.length > 0 ? resources.map(item => (
+                                        <a href={item.url} target="_blank" key={item.id} className="block border-b pb-4 group">
+                                            <div className="flex justify-between items-start">
+                                                <div>
+                                                    <h2 className="text-xl font-bold text-[#003f72] group-hover:text-[#6a1b57] transition-colors">{item.title}</h2>
+                                                    <p className="text-md text-gray-500 mt-1">{item.author}</p>
+                                                </div>
+                                                <p className="text-lg text-gray-400 font-semibold flex-shrink-0 ml-4">{item.year}</p>
+                                            </div>
+                                        </a>
+                                    )) : <p>No hay recursos en esta categoría todavía.</p>}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                );
+            };
+            
+
+            // ---- RENDERIZADO PRINCIPAL ----
+            return (
+                <div>
+                    <Header />
+                    <WelcomeAvatar />
+                    <main>
+                        {view === 'home' && <HomeView />}
+                        {view === 'courses' && <CoursesView />}
+                        {view === 'form' && <FormView />}
+                        {view === 'facultyInfo' && <FacultyInfoView />}
+                        {view === 'facultyForm' && <FacultyFormView />}
+                        {view === 'publications' && <PublicationsView />}
+                        {view === 'event' && <EventView />}
+                        {view === 'resources' && <ResourcesView />}
+                        {view === 'resourceDetail' && <ResourceDetailView category={selectedResourceCategory} />}
+                    </main>
+                    <Footer />
+                </div>
+            );
+        };
+        
+        // Renderiza el componente 'App' en el elemento del DOM con el id 'app'.
+        ReactDOM.render(<App />, document.getElementById('app'));
+    </script>
+</body>
+</html>
+
